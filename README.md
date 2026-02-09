@@ -2,7 +2,7 @@
 
 A Credit Risk Analyst AI Agent built with Databricks Agentbricks that features **persistent memory** powered by Databricks Lakebase. The agent remembers customer analyses, risk assessments, and conversation history across sessions.
 
-This is extended Agnet version of Databricks Solution :https://www.databricks.com/resources/demos/tutorials/lakehouse-platform/lakehouse-credit-decisioning
+This is extended version of Databricks Solution :https://www.databricks.com/resources/demos/tutorials/lakehouse-platform/lakehouse-credit-decisioning
 I have added this new module to implement agent memory with Lakebase.
 
 ## Features
