@@ -1,0 +1,20 @@
+# Databricks App Configuration
+# Credit Risk AI Assistant with Long-Term Memory (Lakebase)
+
+command:
+  - "python"
+  - "app.py"
+
+env:
+  - name: DATABRICKS_HOST
+    value: "https://adb-984752964297111.11.azuredatabricks.net"
+  - name: SERVING_ENDPOINT
+    value: "mas-8f9f5609-endpoint"
+  - name: LAKEBASE_INSTANCE_ID
+    value: "f73e15d8-cd0a-406e-a94c-efe31f020841"
+
+# Resources required for the app
+resources:
+  serving_endpoints:
+    - name: mas-8f9f5609-endpoint
+      permission: CAN_QUERY
