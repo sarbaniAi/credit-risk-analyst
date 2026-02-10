@@ -29,3 +29,7 @@ venv/
 
 # Databricks local config
 .databricks/
+
+# Agent files (not part of app deployment)
+agent_with_memory.py
+driver.py
