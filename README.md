@@ -5,6 +5,49 @@ A Credit Risk Analyst AI Agent built with Databricks Agentbricks that features *
 This is extended version of Databricks Solution :https://www.databricks.com/resources/demos/tutorials/lakehouse-platform/lakehouse-credit-decisioning
 I have added this new module to implement agent memory with Lakebase.
 
+## Prerequisite : 
+
+Build your ## Supervisor Agent ##  with Databricks Agenbricks , get the Agent endpoint once it is ready. Replace the agent in app code with your agent end point
+
+### 1. `app.py` 
+
+```python
+SERVING_ENDPOINT = os.getenv("SERVING_ENDPOINT", "mas-8f9f5609-endpoint")
+```
+
+### 2. `deploy/app.py` 
+
+```python
+SERVING_ENDPOINT = os.getenv("SERVING_ENDPOINT", "mas-8f9f5609-endpoint")
+```
+
+### 3. `app.yaml` 
+
+```yaml
+env:
+  - name: SERVING_ENDPOINT
+    value: "mas-8f9f5609-endpoint"
+
+permissions:
+  serving_endpoints:
+    - name: mas-8f9f5609-endpoint
+```
+
+### 4. `deploy/app.yaml` 
+
+```yaml
+env:
+  - name: SERVING_ENDPOINT
+    value: "mas-8f9f5609-endpoint"
+
+permissions:
+  serving_endpoints:
+    - name: mas-8f9f5609-endpoint
+```
+
+---
+
+
 ## Features
 
 - **Persistent Long-Term Memory** - Stores customer insights, risk assessments, and emails across sessions using Lakebase (Databricks' managed PostgreSQL)
