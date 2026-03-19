@@ -91,43 +91,8 @@ Databricks provides a unified platform to build, deploy, and scale enterprise AI
 
 ## Prerequisite: 
 
-Build your ## Supervisor Agent ##  with Databricks Agenbricks , get the Agent endpoint once it is ready. Replace the agent in app code with your agent end point
+Build agent with  ## Agentbricks Supervisor Agent ##  or build a [custom agent](https://docs.databricks.com/aws/en/generative-ai/agent-framework/author-agent), get the Agent endpoint once it is ready. Replace the agent in app code with your agent end point
 
-### 1. `app.py` 
-
-```python
-SERVING_ENDPOINT = os.getenv("SERVING_ENDPOINT", "mas-8f9f5609-endpoint")
-```
-
-### 2. `deploy/app.py` 
-
-```python
-SERVING_ENDPOINT = os.getenv("SERVING_ENDPOINT", "mas-8f9f5609-endpoint")
-```
-
-### 3. `app.yaml` 
-
-```yaml
-env:
-  - name: SERVING_ENDPOINT
-    value: "mas-8f9f5609-endpoint"
-
-permissions:
-  serving_endpoints:
-    - name: mas-8f9f5609-endpoint
-```
-
-### 4. `deploy/app.yaml` 
-
-```yaml
-env:
-  - name: SERVING_ENDPOINT
-    value: "mas-8f9f5609-endpoint"
-
-permissions:
-  serving_endpoints:
-    - name: mas-8f9f5609-endpoint
-```
 
 ---
 
