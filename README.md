@@ -91,7 +91,7 @@ Databricks provides a unified platform to build, deploy, and scale enterprise AI
 
 ## Prerequisite: 
 
-Build agent with  ## Agentbricks Supervisor Agent ##  or build a [custom agent](https://docs.databricks.com/aws/en/generative-ai/agent-framework/author-agent), get the Agent endpoint once it is ready. Replace the agent in app code with your agent end point
+Build Databricks agent with  [Agentbricks Supervisor Agent](https://docs.databricks.com/aws/en/generative-ai/agent-bricks/)  or build a [custom agent](https://docs.databricks.com/aws/en/generative-ai/agent-framework/author-agent), get the Agent endpoint once it is ready. Replace the agent in app code with your agent end point
 
 
 ---
