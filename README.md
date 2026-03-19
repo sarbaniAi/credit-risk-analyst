@@ -2,10 +2,94 @@
 
 A Credit Risk Analyst AI Agent built with Databricks Agentbricks that features **persistent memory** powered by Databricks Lakebase. The agent remembers customer analyses, risk assessments, and conversation history across sessions.
 
-This is extended version of Databricks Solution :https://www.databricks.com/resources/demos/tutorials/lakehouse-platform/lakehouse-credit-decisioning
+This is extended version of Databricks Solution: https://www.databricks.com/resources/demos/tutorials/lakehouse-platform/lakehouse-credit-decisioning
 I have added this new module to implement agent memory with Lakebase.
 
-## Prerequisite : 
+---
+
+## Business Problem
+
+Financial institutions face critical challenges in credit risk assessment:
+
+| Challenge | Impact |
+|-----------|--------|
+| **Manual Analysis Bottleneck** | Credit analysts spend 60-70% of time gathering data from disparate systems |
+| **Inconsistent Risk Decisions** | Different analysts apply varying criteria, leading to compliance risks |
+| **No Institutional Memory** | Each analysis starts from scratch; past insights on customers are lost |
+| **Audit Trail Gaps** | Difficulty demonstrating regulatory compliance without complete conversation history |
+| **Slow Time-to-Decision** | Loan approvals delayed due to manual data aggregation |
+
+**This solution addresses these problems by:**
+- Automating data retrieval from multiple sources (credit bureaus, financial statements, transaction history)
+- Applying consistent risk scoring through AI-powered analysis
+- Maintaining persistent memory of all customer interactions and assessments
+- Providing complete audit trails for regulatory compliance (FCRA, ECOA, Basel III)
+- Reducing credit decision time from days to minutes
+
+---
+
+## Why Databricks for Production-Grade AI Agents
+
+Databricks provides a unified platform to build, deploy, and scale enterprise AI agents:
+
+### 1. **Agentbricks Framework**
+- Build sophisticated multi-tool agents with Unity Catalog function integration
+- Native support for LangGraph conversation flows
+- Seamless integration with Databricks Model Serving
+
+### 2. **Lakebase (Managed PostgreSQL)**
+- Fully-managed database for persistent agent memory
+- No infrastructure management; automatic scaling and backups
+- SQL-compatible for easy querying and compliance reporting
+- Built-in authentication via Databricks service principals
+
+### 3. **Model Serving Endpoints**
+- Deploy agents as scalable REST APIs with one click
+- Built-in authentication and rate limiting
+- Auto-scaling based on demand; pay only for what you use
+- Supports Foundation Models (GPT-4, Claude, Llama) or custom fine-tuned models
+
+### 4. **Databricks Apps**
+- Deploy frontend applications within your Databricks workspace
+- Single Sign-On (SSO) with existing enterprise identity
+- No separate hosting infrastructure required
+- Secure access to data and models without credential management
+
+### 5. **Unity Catalog Integration**
+- Govern AI functions and tools centrally
+- Row-level security on customer data
+- Audit logging for all data access
+- Share tools across teams with fine-grained permissions
+
+### 6. **Enterprise Security & Compliance**
+- Data never leaves your cloud environment
+- SOC 2 Type II, HIPAA, FedRAMP certified
+- Complete lineage tracking for model decisions
+- Role-based access control (RBAC) at every layer
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    DATABRICKS AGENTIC ARCHITECTURE                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌──────────────┐    ┌──────────────┐    ┌──────────────────────────┐  │
+│   │ Databricks   │    │   Model      │    │    Unity Catalog         │  │
+│   │    Apps      │───▶│  Serving     │───▶│  (Functions & Data)      │  │
+│   │  (React UI)  │    │ (Agent API)  │    │                          │  │
+│   └──────────────┘    └──────────────┘    └──────────────────────────┘  │
+│          │                   │                        │                  │
+│          │                   ▼                        │                  │
+│          │         ┌──────────────────┐              │                  │
+│          │         │    Lakebase      │              │                  │
+│          └────────▶│ (Agent Memory)   │◀─────────────┘                  │
+│                    └──────────────────┘                                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Prerequisite: 
 
 Build your ## Supervisor Agent ##  with Databricks Agenbricks , get the Agent endpoint once it is ready. Replace the agent in app code with your agent end point
 
