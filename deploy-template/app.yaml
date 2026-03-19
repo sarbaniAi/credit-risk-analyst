@@ -1,0 +1,38 @@
+# ============================================================
+# Credit Risk Analyst Agent with Memory - App Configuration
+# ============================================================
+# 
+# INSTRUCTIONS: Update the 4 values marked with <CHANGE_ME> below
+# See SETUP_GUIDE.md for detailed instructions
+#
+# ============================================================
+
+command:
+  - "python"
+  - "app.py"
+
+env:
+  # ----------------------------------------------------------
+  # CONFIGURATION - Update these values for your environment
+  # ----------------------------------------------------------
+  
+  # 1. Your Databricks Workspace URL
+  - name: DATABRICKS_HOST
+    value: "<CHANGE_ME_WORKSPACE_URL>"  # e.g., https://adb-123456789.11.azuredatabricks.net
+  
+  # 2. Your Agent Serving Endpoint Name
+  - name: SERVING_ENDPOINT
+    value: "<CHANGE_ME_ENDPOINT_NAME>"  # e.g., my-credit-agent-endpoint
+  
+  # 3. Your Lakebase Instance Name
+  - name: LAKEBASE_INSTANCE_NAME
+    value: "<CHANGE_ME_LAKEBASE_NAME>"  # e.g., my-lakebase-instance
+
+# ----------------------------------------------------------
+# PERMISSIONS - Update endpoint name to match SERVING_ENDPOINT
+# ----------------------------------------------------------
+resources:
+  serving_endpoints:
+    # 4. Same endpoint name as SERVING_ENDPOINT above
+    - name: <CHANGE_ME_ENDPOINT_NAME>
+      permission: CAN_QUERY
