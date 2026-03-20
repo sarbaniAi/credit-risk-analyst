@@ -134,6 +134,12 @@ Replace the agent in app code with your agent end point. ( Refer : deploy-templa
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### Credit Risk Agent Chat Interface
+
+![Credit Risk Agent UI](images/credit-risk-agent-ui.png)
+
+*The agent chat interface showing memory-enabled conversations with persistent context across sessions.*
+
 ## Lakebase Memory Tables
 
 | Table | Purpose |
