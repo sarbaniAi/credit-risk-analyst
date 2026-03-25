@@ -34,7 +34,7 @@ FUNC_CREDIT_REPORT = "credit_report_generator"
 # ============================================================
 # AGENT / MODEL SERVING
 # ============================================================
-AGENT_MODEL = "databricks-GPT-OSS-120B"
+AGENT_MODEL = "databricks-gpt-oss-120b"
 AGENT_ENDPOINT_NAME = "credit-risk-agent-endpoint"
 
 # ============================================================

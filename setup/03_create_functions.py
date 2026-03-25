@@ -13,7 +13,7 @@ except ImportError:
     CATALOG = "fsi_credit_agent"
     SCHEMA = "agent_schema"
     TABLE_UNDERBANKED = "underbanked_prediction"
-    AGENT_MODEL = "databricks-GPT-OSS-120B"
+    AGENT_MODEL = "databricks-gpt-oss-120b"
 
 FULL_SCHEMA = f"{CATALOG}.{SCHEMA}"
 

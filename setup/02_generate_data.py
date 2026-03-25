@@ -341,6 +341,8 @@ if __name__ == "__main__" or "spark" in dir():
     try:
         from pyspark.sql import SparkSession
         spark = SparkSession.builder.getOrCreate()
+        # Verify it's a real Spark session (not Databricks Connect locally)
+        spark.sql("SELECT 1")
 
         # Create catalog and schema
         spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG}")
@@ -372,7 +374,7 @@ if __name__ == "__main__" or "spark" in dir():
         print(f"\nRisk distribution: {high_risk} high-risk ({high_risk*100/len(underbanked_data):.1f}%), "
               f"{len(underbanked_data)-high_risk} low-risk ({(len(underbanked_data)-high_risk)*100/len(underbanked_data):.1f}%)")
 
-    except ImportError:
+    except Exception:
         # Not in Databricks — export as CSV for manual upload
         import csv
         import os

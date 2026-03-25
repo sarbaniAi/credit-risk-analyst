@@ -138,7 +138,7 @@ if __name__ == "__main__":
     # Try Spark first (Databricks notebook), fall back to CLI
     try:
         load_chunks_spark()
-    except ImportError:
+    except Exception:
         import argparse
         parser = argparse.ArgumentParser()
         parser.add_argument("--profile", default=None)
