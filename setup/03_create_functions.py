@@ -8,18 +8,22 @@ Creates:
 
 # %%
 import os
-try:
-    from setup.config import CATALOG, SCHEMA, TABLE_UNDERBANKED, AGENT_MODEL
-except ImportError:
+
+_catalog_env = os.environ.get("UC_CATALOG", "")
+_schema_env = os.environ.get("UC_SCHEMA", "")
+
+if _catalog_env and _schema_env:
+    CATALOG, SCHEMA = _catalog_env, _schema_env
+    TABLE_UNDERBANKED = os.environ.get("TABLE_UNDERBANKED", "underbanked_prediction")
+    AGENT_MODEL = os.environ.get("AGENT_MODEL", "databricks-gpt-oss-120b")
+else:
     try:
-        from config import CATALOG, SCHEMA, TABLE_UNDERBANKED, AGENT_MODEL
+        from setup.config import CATALOG, SCHEMA, TABLE_UNDERBANKED, AGENT_MODEL
     except ImportError:
-        CATALOG = os.environ.get("UC_CATALOG", "")
-        SCHEMA = os.environ.get("UC_SCHEMA", "")
-        if not CATALOG or not SCHEMA:
+        try:
+            from config import CATALOG, SCHEMA, TABLE_UNDERBANKED, AGENT_MODEL
+        except ImportError:
             raise RuntimeError("Set UC_CATALOG and UC_SCHEMA env vars or ensure config.py is importable")
-        TABLE_UNDERBANKED = os.environ.get("TABLE_UNDERBANKED", "underbanked_prediction")
-        AGENT_MODEL = os.environ.get("AGENT_MODEL", "databricks-gpt-oss-120b")
 
 FULL_SCHEMA = f"{CATALOG}.{SCHEMA}"
 

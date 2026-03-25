@@ -14,15 +14,19 @@ import sys
 import time
 
 import os
-try:
-    from setup.config import LAKEBASE_INSTANCE_NAME, LAKEBASE_DB
-except ImportError:
+
+_lakebase_env = os.environ.get("LAKEBASE_INSTANCE_NAME", "")
+
+if _lakebase_env:
+    LAKEBASE_INSTANCE_NAME = _lakebase_env
+    LAKEBASE_DB = os.environ.get("LAKEBASE_DB", "databricks_postgres")
+else:
     try:
-        from config import LAKEBASE_INSTANCE_NAME, LAKEBASE_DB
+        from setup.config import LAKEBASE_INSTANCE_NAME, LAKEBASE_DB
     except ImportError:
-        LAKEBASE_INSTANCE_NAME = os.environ.get("LAKEBASE_INSTANCE_NAME", "")
-        LAKEBASE_DB = os.environ.get("LAKEBASE_DB", "databricks_postgres")
-        if not LAKEBASE_INSTANCE_NAME:
+        try:
+            from config import LAKEBASE_INSTANCE_NAME, LAKEBASE_DB
+        except ImportError:
             print("ERROR: Set LAKEBASE_INSTANCE_NAME env var or ensure config.py is importable")
             sys.exit(1)
 

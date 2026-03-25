@@ -22,23 +22,27 @@ import random
 import numpy as np
 from datetime import datetime
 
-# Import config
+# Import config — env vars take priority over config.py
 import os
-try:
-    from setup.config import *
-except ImportError:
+
+_catalog_env = os.environ.get("UC_CATALOG", "")
+_schema_env = os.environ.get("UC_SCHEMA", "")
+
+if _catalog_env and _schema_env:
+    CATALOG, SCHEMA = _catalog_env, _schema_env
+    TABLE_UNDERBANKED = os.environ.get("TABLE_UNDERBANKED", "underbanked_prediction")
+    TABLE_PERSONAL_INFO = os.environ.get("TABLE_PERSONAL_INFO", "cust_personal_info")
+    NUM_CUSTOMERS_FULL = int(os.environ.get("NUM_CUSTOMERS_FULL", "1000"))
+    NUM_CUSTOMERS_PERSONAL = int(os.environ.get("NUM_CUSTOMERS_PERSONAL", "100"))
+    RANDOM_SEED = int(os.environ.get("RANDOM_SEED", "42"))
+else:
     try:
-        from config import *
+        from setup.config import *
     except ImportError:
-        CATALOG = os.environ.get("UC_CATALOG", "")
-        SCHEMA = os.environ.get("UC_SCHEMA", "")
-        if not CATALOG or not SCHEMA:
+        try:
+            from config import *
+        except ImportError:
             raise RuntimeError("Set UC_CATALOG and UC_SCHEMA env vars or ensure config.py is importable")
-        TABLE_UNDERBANKED = os.environ.get("TABLE_UNDERBANKED", "underbanked_prediction")
-        TABLE_PERSONAL_INFO = os.environ.get("TABLE_PERSONAL_INFO", "cust_personal_info")
-        NUM_CUSTOMERS_FULL = int(os.environ.get("NUM_CUSTOMERS_FULL", "1000"))
-        NUM_CUSTOMERS_PERSONAL = int(os.environ.get("NUM_CUSTOMERS_PERSONAL", "100"))
-        RANDOM_SEED = int(os.environ.get("RANDOM_SEED", "42"))
 
 random.seed(RANDOM_SEED)
 np.random.seed(RANDOM_SEED)

@@ -12,15 +12,18 @@ import json
 import subprocess
 import sys
 
-try:
-    from setup.config import CATALOG, SCHEMA
-except ImportError:
+_catalog_env = os.environ.get("UC_CATALOG", "")
+_schema_env = os.environ.get("UC_SCHEMA", "")
+
+if _catalog_env and _schema_env:
+    CATALOG, SCHEMA = _catalog_env, _schema_env
+else:
     try:
-        from config import CATALOG, SCHEMA
+        from setup.config import CATALOG, SCHEMA
     except ImportError:
-        CATALOG = os.environ.get("UC_CATALOG", "")
-        SCHEMA = os.environ.get("UC_SCHEMA", "")
-        if not CATALOG or not SCHEMA:
+        try:
+            from config import CATALOG, SCHEMA
+        except ImportError:
             print("ERROR: Set UC_CATALOG and UC_SCHEMA env vars or ensure config.py is importable")
             sys.exit(1)
 

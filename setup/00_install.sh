@@ -22,11 +22,50 @@
 # No set -e: we handle errors explicitly per step
 
 PROFILE=${1:-"DEFAULT"}
-CATALOG="fsi_credit_agent"
-SCHEMA="agent_schema"
-FULL_SCHEMA="${CATALOG}.${SCHEMA}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Read CATALOG and SCHEMA: env vars take priority, then config.py, else fail
+CATALOG=$(python3 -c "
+import sys, os
+# Env var overrides config.py
+v = os.environ.get('UC_CATALOG', '')
+if v:
+    print(v)
+else:
+    sys.path.insert(0, '$SCRIPT_DIR')
+    try:
+        from config import CATALOG
+        print(CATALOG)
+    except Exception:
+        sys.exit(1)
+" 2>/dev/null)
+
+if [ -z "$CATALOG" ]; then
+    echo "ERROR: Set CATALOG in setup/config.py or UC_CATALOG env var"
+    exit 1
+fi
+
+SCHEMA=$(python3 -c "
+import sys, os
+v = os.environ.get('UC_SCHEMA', '')
+if v:
+    print(v)
+else:
+    sys.path.insert(0, '$SCRIPT_DIR')
+    try:
+        from config import SCHEMA
+        print(SCHEMA)
+    except Exception:
+        sys.exit(1)
+" 2>/dev/null)
+
+if [ -z "$SCHEMA" ]; then
+    echo "ERROR: Set SCHEMA in setup/config.py or UC_SCHEMA env var"
+    exit 1
+fi
+
+FULL_SCHEMA="${CATALOG}.${SCHEMA}"
 
 # Export for child Python scripts
 export UC_CATALOG="$CATALOG"
@@ -157,7 +196,7 @@ whs = json.load(sys.stdin)
 if whs: print(whs[0]['id'])
 " 2>/dev/null)
     if [ -n "$WH_ID" ]; then
-        databricks warehouses start $WH_ID --profile=$PROFILE 2>/dev/null
+        databricks warehouses start $WH_ID --profile=$PROFILE > /dev/null 2>&1
         echo "  ⏳ Waiting for warehouse $WH_ID to start..."
         for i in $(seq 1 12); do
             sleep 10
@@ -183,8 +222,16 @@ CAT_RESULT=$(run_sql "CREATE CATALOG IF NOT EXISTS $CATALOG")
 CAT_OK=$(echo "$CAT_RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print('yes' if r.get('status',{}).get('state')=='SUCCEEDED' else 'no')" 2>/dev/null)
 
 if [ "$CAT_OK" = "yes" ]; then
-    echo "  ✓ Catalog '$CATALOG' created"
-else
+    # Verify catalog actually exists (CREATE may silently succeed without creating)
+    CAT_VERIFY=$(run_sql "SHOW CATALOGS LIKE '$CATALOG'" | python3 -c "import json,sys; r=json.load(sys.stdin); data=r.get('result',{}).get('data_array',[]); print('yes' if data else 'no')" 2>/dev/null)
+    if [ "$CAT_VERIFY" = "yes" ]; then
+        echo "  ✓ Catalog '$CATALOG' created"
+    else
+        CAT_OK="no"
+    fi
+fi
+
+if [ "$CAT_OK" != "yes" ]; then
     # Check if it already exists
     CAT_EXISTS=$(run_sql "SHOW CATALOGS LIKE '$CATALOG'" | python3 -c "import json,sys; r=json.load(sys.stdin); data=r.get('result',{}).get('data_array',[]); print('yes' if data else 'no')" 2>/dev/null)
     if [ "$CAT_EXISTS" = "yes" ]; then
