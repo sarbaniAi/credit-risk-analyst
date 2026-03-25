@@ -42,16 +42,39 @@ echo "============================================================"
 run_sql() {
     local stmt="$1"
     python3 -c "
-import json, subprocess, sys
+import json, subprocess, sys, time
 stmt = sys.argv[1]
-payload = json.dumps({
-    'warehouse_id': '$WH_ID',
-    'statement': stmt,
-    'wait_timeout': '50s'
+profile = '$PROFILE'
+wh_id = '$WH_ID'
+
+def api_post(endpoint, body):
+    cmd = ['databricks', 'api', 'post', endpoint, '--profile', profile, '--json', json.dumps(body)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else {'error': r.stderr[:300]}
+
+def api_get(endpoint):
+    cmd = ['databricks', 'api', 'get', endpoint, '--profile', profile]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else {'error': r.stderr[:300]}
+
+# Submit with wait_timeout to try quick completion first
+result = api_post('/api/2.0/sql/statements', {
+    'warehouse_id': wh_id, 'statement': stmt, 'wait_timeout': '50s'
 })
-cmd = ['databricks', 'api', 'post', '/api/2.0/sql/statements', '--profile', '$PROFILE', '--json', payload]
-r = subprocess.run(cmd, capture_output=True, text=True)
-print(r.stdout if r.returncode == 0 else '{\"error\": \"' + r.stderr[:200].replace('\"','') + '\"}')
+state = result.get('status', {}).get('state', 'UNKNOWN')
+stmt_id = result.get('statement_id', '')
+
+# If still pending/running, poll until done (up to 5 min)
+if state in ('PENDING', 'RUNNING') and stmt_id:
+    for _ in range(60):
+        time.sleep(5)
+        poll = api_get(f'/api/2.0/sql/statements/{stmt_id}')
+        state = poll.get('status', {}).get('state', 'UNKNOWN')
+        if state not in ('PENDING', 'RUNNING'):
+            result = poll
+            break
+
+print(json.dumps(result))
 " "$stmt" 2>/dev/null
 }
 
@@ -149,14 +172,69 @@ echo "  ✓ Using warehouse: $WH_ID"
 echo ""
 echo "[2/8] Creating catalog, schema, and volume..."
 
-run_sql "CREATE CATALOG IF NOT EXISTS $CATALOG" > /dev/null
-echo "  ✓ Catalog '$CATALOG'"
+# Attempt to create catalog
+CAT_RESULT=$(run_sql "CREATE CATALOG IF NOT EXISTS $CATALOG")
+CAT_OK=$(echo "$CAT_RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print('yes' if r.get('status',{}).get('state')=='SUCCEEDED' else 'no')" 2>/dev/null)
 
-run_sql "CREATE SCHEMA IF NOT EXISTS $FULL_SCHEMA" > /dev/null
-echo "  ✓ Schema '$FULL_SCHEMA'"
+if [ "$CAT_OK" = "yes" ]; then
+    echo "  ✓ Catalog '$CATALOG' created"
+else
+    # Check if it already exists
+    CAT_EXISTS=$(run_sql "SHOW CATALOGS LIKE '$CATALOG'" | python3 -c "import json,sys; r=json.load(sys.stdin); data=r.get('result',{}).get('data_array',[]); print('yes' if data else 'no')" 2>/dev/null)
+    if [ "$CAT_EXISTS" = "yes" ]; then
+        echo "  ✓ Catalog '$CATALOG' (already exists)"
+    else
+        CAT_ERR=$(echo "$CAT_RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r.get('status',{}).get('error',{}).get('message','Unknown error')[:300])" 2>/dev/null)
+        echo ""
+        echo "  ✗ Could not create catalog '$CATALOG'"
+        echo "    Reason: $CAT_ERR"
+        echo ""
+        echo "  Available catalogs on this workspace:"
+        run_sql "SHOW CATALOGS" | python3 -c "
+import json, sys
+r = json.load(sys.stdin)
+for row in r.get('result',{}).get('data_array',[]):
+    name = row[0]
+    if name not in ('system','samples','__databricks_internal'):
+        print(f'      - {name}')
+" 2>/dev/null
+        echo ""
+        echo "  OPTIONS:"
+        echo "    1. Create catalog '$CATALOG' manually via the Databricks UI"
+        echo "       (Catalog Explorer → Create Catalog → Name: $CATALOG)"
+        echo "    2. Use an existing catalog by editing setup/config.py:"
+        echo "       CATALOG = \"<catalog_name_from_above>\""
+        echo "    3. Re-run this script after resolving"
+        exit 1
+    fi
+fi
 
-run_sql "CREATE VOLUME IF NOT EXISTS $FULL_SCHEMA.credit_docs" > /dev/null
-echo "  ✓ Volume '$FULL_SCHEMA.credit_docs'"
+# Create schema
+SCHEMA_RESULT=$(run_sql "CREATE SCHEMA IF NOT EXISTS $FULL_SCHEMA")
+SCHEMA_OK=$(echo "$SCHEMA_RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print('yes' if r.get('status',{}).get('state')=='SUCCEEDED' else 'no')" 2>/dev/null)
+if [ "$SCHEMA_OK" = "yes" ]; then
+    echo "  ✓ Schema '$FULL_SCHEMA' created"
+else
+    SCHEMA_EXISTS=$(run_sql "SHOW SCHEMAS IN $CATALOG LIKE '$SCHEMA'" | python3 -c "import json,sys; r=json.load(sys.stdin); data=r.get('result',{}).get('data_array',[]); print('yes' if data else 'no')" 2>/dev/null)
+    if [ "$SCHEMA_EXISTS" = "yes" ]; then
+        echo "  ✓ Schema '$FULL_SCHEMA' (already exists)"
+    else
+        SCHEMA_ERR=$(echo "$SCHEMA_RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r.get('status',{}).get('error',{}).get('message','Unknown error')[:300])" 2>/dev/null)
+        echo "  ✗ Could not create schema '$FULL_SCHEMA'"
+        echo "    Reason: $SCHEMA_ERR"
+        exit 1
+    fi
+fi
+
+# Create volume
+VOL_RESULT=$(run_sql "CREATE VOLUME IF NOT EXISTS $FULL_SCHEMA.credit_docs")
+VOL_OK=$(echo "$VOL_RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print('yes' if r.get('status',{}).get('state')=='SUCCEEDED' else 'no')" 2>/dev/null)
+if [ "$VOL_OK" = "yes" ]; then
+    echo "  ✓ Volume '$FULL_SCHEMA.credit_docs' created"
+else
+    VOL_ERR=$(echo "$VOL_RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r.get('status',{}).get('error',{}).get('message','Unknown error')[:300])" 2>/dev/null)
+    echo "  ⚠ Volume creation issue: $VOL_ERR"
+fi
 
 # ============================================================
 # [3/8] GENERATE DATA & CREATE TABLES
@@ -201,15 +279,30 @@ else
     echo "  ⚠ cust_personal_info: check workspace for status"
 fi
 
-# Verify tables
+# Verify tables (retry up to 3 times if 0 rows)
 echo "  Verifying tables..."
-RESULT=$(run_sql "SELECT COUNT(*) as cnt FROM $FULL_SCHEMA.underbanked_prediction")
-CNT=$(echo "$RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r.get('result',{}).get('data_array',[[0]])[0][0])" 2>/dev/null)
-echo "  ✓ underbanked_prediction: $CNT rows"
+for attempt in 1 2 3; do
+    RESULT=$(run_sql "SELECT COUNT(*) as cnt FROM $FULL_SCHEMA.underbanked_prediction")
+    CNT_UB=$(echo "$RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r.get('result',{}).get('data_array',[[0]])[0][0])" 2>/dev/null)
 
-RESULT=$(run_sql "SELECT COUNT(*) as cnt FROM $FULL_SCHEMA.cust_personal_info")
-CNT=$(echo "$RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r.get('result',{}).get('data_array',[[0]])[0][0])" 2>/dev/null)
-echo "  ✓ cust_personal_info: $CNT rows"
+    RESULT=$(run_sql "SELECT COUNT(*) as cnt FROM $FULL_SCHEMA.cust_personal_info")
+    CNT_PI=$(echo "$RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r.get('result',{}).get('data_array',[[0]])[0][0])" 2>/dev/null)
+
+    if [ "$CNT_UB" != "0" ] && [ -n "$CNT_UB" ] && [ "$CNT_PI" != "0" ] && [ -n "$CNT_PI" ]; then
+        break
+    fi
+    if [ "$attempt" -lt 3 ]; then
+        echo "  ⏳ Tables not ready yet, waiting 15s... (attempt $attempt/3)"
+        sleep 15
+    fi
+done
+echo "  ✓ underbanked_prediction: $CNT_UB rows"
+echo "  ✓ cust_personal_info: $CNT_PI rows"
+
+if [ "$CNT_UB" = "0" ] || [ -z "$CNT_UB" ]; then
+    echo "  ✗ ERROR: underbanked_prediction table is empty. Check workspace SQL editor."
+    exit 1
+fi
 
 # ============================================================
 # [4/8] CREATE UC FUNCTIONS
