@@ -13,11 +13,18 @@ import subprocess
 import sys
 import time
 
+import os
 try:
     from setup.config import LAKEBASE_INSTANCE_NAME, LAKEBASE_DB
 except ImportError:
-    LAKEBASE_INSTANCE_NAME = "credit-risk-lakebase"
-    LAKEBASE_DB = "databricks_postgres"
+    try:
+        from config import LAKEBASE_INSTANCE_NAME, LAKEBASE_DB
+    except ImportError:
+        LAKEBASE_INSTANCE_NAME = os.environ.get("LAKEBASE_INSTANCE_NAME", "")
+        LAKEBASE_DB = os.environ.get("LAKEBASE_DB", "databricks_postgres")
+        if not LAKEBASE_INSTANCE_NAME:
+            print("ERROR: Set LAKEBASE_INSTANCE_NAME env var or ensure config.py is importable")
+            sys.exit(1)
 
 
 def run_cli(args, profile=None):

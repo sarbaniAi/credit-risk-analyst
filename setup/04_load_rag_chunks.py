@@ -15,8 +15,14 @@ import sys
 try:
     from setup.config import CATALOG, SCHEMA
 except ImportError:
-    CATALOG = os.environ.get("UC_CATALOG", "fsi_credit_agent")
-    SCHEMA = os.environ.get("UC_SCHEMA", "agent_schema")
+    try:
+        from config import CATALOG, SCHEMA
+    except ImportError:
+        CATALOG = os.environ.get("UC_CATALOG", "")
+        SCHEMA = os.environ.get("UC_SCHEMA", "")
+        if not CATALOG or not SCHEMA:
+            print("ERROR: Set UC_CATALOG and UC_SCHEMA env vars or ensure config.py is importable")
+            sys.exit(1)
 
 FULL_SCHEMA = f"{CATALOG}.{SCHEMA}"
 RAG_TABLE = f"{FULL_SCHEMA}.rag_chunks"

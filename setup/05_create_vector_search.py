@@ -11,11 +11,17 @@ Run as a Databricks notebook.
 """
 
 # %%
+import os
 try:
     from setup.config import CATALOG, SCHEMA
 except ImportError:
-    CATALOG = "fsi_credit_agent"
-    SCHEMA = "agent_schema"
+    try:
+        from config import CATALOG, SCHEMA
+    except ImportError:
+        CATALOG = os.environ.get("UC_CATALOG", "")
+        SCHEMA = os.environ.get("UC_SCHEMA", "")
+        if not CATALOG or not SCHEMA:
+            raise RuntimeError("Set UC_CATALOG and UC_SCHEMA env vars or ensure config.py is importable")
 
 FULL_SCHEMA = f"{CATALOG}.{SCHEMA}"
 RAG_TABLE = f"{FULL_SCHEMA}.rag_chunks"

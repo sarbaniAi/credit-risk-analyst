@@ -7,13 +7,19 @@ Creates:
 """
 
 # %%
+import os
 try:
     from setup.config import CATALOG, SCHEMA, TABLE_UNDERBANKED, AGENT_MODEL
 except ImportError:
-    CATALOG = "fsi_credit_agent"
-    SCHEMA = "agent_schema"
-    TABLE_UNDERBANKED = "underbanked_prediction"
-    AGENT_MODEL = "databricks-gpt-oss-120b"
+    try:
+        from config import CATALOG, SCHEMA, TABLE_UNDERBANKED, AGENT_MODEL
+    except ImportError:
+        CATALOG = os.environ.get("UC_CATALOG", "")
+        SCHEMA = os.environ.get("UC_SCHEMA", "")
+        if not CATALOG or not SCHEMA:
+            raise RuntimeError("Set UC_CATALOG and UC_SCHEMA env vars or ensure config.py is importable")
+        TABLE_UNDERBANKED = os.environ.get("TABLE_UNDERBANKED", "underbanked_prediction")
+        AGENT_MODEL = os.environ.get("AGENT_MODEL", "databricks-gpt-oss-120b")
 
 FULL_SCHEMA = f"{CATALOG}.{SCHEMA}"
 

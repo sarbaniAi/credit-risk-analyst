@@ -6,12 +6,18 @@ Run as Databricks notebook or via CLI:
 """
 
 # %%
+import os
 try:
     from setup.config import CATALOG, SCHEMA, VOLUME_NAME
 except ImportError:
-    CATALOG = "fsi_credit_agent"
-    SCHEMA = "agent_schema"
-    VOLUME_NAME = "credit_docs"
+    try:
+        from config import CATALOG, SCHEMA, VOLUME_NAME
+    except ImportError:
+        CATALOG = os.environ.get("UC_CATALOG", "")
+        SCHEMA = os.environ.get("UC_SCHEMA", "")
+        VOLUME_NAME = os.environ.get("UC_VOLUME", "credit_docs")
+        if not CATALOG or not SCHEMA:
+            raise RuntimeError("Set UC_CATALOG and UC_SCHEMA env vars or ensure config.py is importable")
 
 # %%
 # Run in Databricks notebook or cluster

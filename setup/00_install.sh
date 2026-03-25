@@ -28,6 +28,12 @@ FULL_SCHEMA="${CATALOG}.${SCHEMA}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Export for child Python scripts
+export UC_CATALOG="$CATALOG"
+export UC_SCHEMA="$SCHEMA"
+export LAKEBASE_INSTANCE_NAME="credit-risk-lakebase"
+export DATABRICKS_CONFIG_PROFILE="$PROFILE"
+
 echo "============================================================"
 echo " Credit Risk Analyst Agent — Automated Setup"
 echo " Profile: $PROFILE"

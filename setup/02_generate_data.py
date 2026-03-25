@@ -23,17 +23,22 @@ import numpy as np
 from datetime import datetime
 
 # Import config
+import os
 try:
     from setup.config import *
 except ImportError:
-    # Running as notebook — define inline
-    CATALOG = "fsi_credit_agent"
-    SCHEMA = "agent_schema"
-    TABLE_UNDERBANKED = "underbanked_prediction"
-    TABLE_PERSONAL_INFO = "cust_personal_info"
-    NUM_CUSTOMERS_FULL = 1000
-    NUM_CUSTOMERS_PERSONAL = 100
-    RANDOM_SEED = 42
+    try:
+        from config import *
+    except ImportError:
+        CATALOG = os.environ.get("UC_CATALOG", "")
+        SCHEMA = os.environ.get("UC_SCHEMA", "")
+        if not CATALOG or not SCHEMA:
+            raise RuntimeError("Set UC_CATALOG and UC_SCHEMA env vars or ensure config.py is importable")
+        TABLE_UNDERBANKED = os.environ.get("TABLE_UNDERBANKED", "underbanked_prediction")
+        TABLE_PERSONAL_INFO = os.environ.get("TABLE_PERSONAL_INFO", "cust_personal_info")
+        NUM_CUSTOMERS_FULL = int(os.environ.get("NUM_CUSTOMERS_FULL", "1000"))
+        NUM_CUSTOMERS_PERSONAL = int(os.environ.get("NUM_CUSTOMERS_PERSONAL", "100"))
+        RANDOM_SEED = int(os.environ.get("RANDOM_SEED", "42"))
 
 random.seed(RANDOM_SEED)
 np.random.seed(RANDOM_SEED)
