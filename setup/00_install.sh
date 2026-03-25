@@ -371,20 +371,80 @@ fi
 echo ""
 echo "[7/8] Creating Genie space..."
 
-GENIE_RESULT=$(run_api post "/api/2.0/genie/spaces" "{
-    \"title\": \"Credit Risk - FSI Credit Decisioning\",
-    \"description\": \"Explore credit risk data for Indian banking customers. Tables include customer financial profiles, transaction patterns, and risk predictions.\",
-    \"warehouse_id\": \"$WH_ID\",
-    \"table_identifiers\": [
-        \"$FULL_SCHEMA.underbanked_prediction\",
-        \"$FULL_SCHEMA.cust_personal_info\"
-    ]
-}")
+GENIE_RESULT=$(python3 - "$WH_ID" "$PROFILE" "$FULL_SCHEMA" <<'PYEOF'
+import json, subprocess, sys, uuid
 
-GENIE_ID=$(echo "$GENIE_RESULT" | python3 -c "import json,sys; r=json.load(sys.stdin); print(r.get('space_id', r.get('id','')))" 2>/dev/null)
+WH_ID, PROFILE, FULL_SCHEMA = sys.argv[1], sys.argv[2], sys.argv[3]
+
+def nid():
+    return uuid.uuid4().hex
+
+# Build serialized_space (version 2 format)
+space = {
+    "version": 2,
+    "config": {
+        "sample_questions": sorted([
+            {"id": nid(), "question": ["How many customers are high risk?"]},
+            {"id": nid(), "question": ["What is the average income of low risk customers?"]},
+            {"id": nid(), "question": ["Show me customers with more than 3 payment delays in last 12 months"]},
+        ], key=lambda x: x["id"])
+    },
+    "data_sources": {
+        "tables": sorted([
+            {"identifier": f"{FULL_SCHEMA}.underbanked_prediction", "description": ["1000 Indian banking customers with financial, transaction, and risk prediction data (61 columns). Prediction: 1=High Risk, 0=Low Risk. Income in INR."]},
+            {"identifier": f"{FULL_SCHEMA}.cust_personal_info", "description": ["100 customer personal details: Indian names, email, phone, risk prediction."]},
+        ], key=lambda t: t["identifier"]),
+        "metric_views": [],
+    },
+    "instructions": {
+        "text_instructions": sorted([{
+            "id": nid(),
+            "content": [
+                f"Indian retail banking credit risk demo. All data is synthetic. "
+                f"Use INR for monetary amounts. Education: 0=Below 10th, 1=10th, 2=12th, 3=Graduate, 4=PG, 5=Professional. "
+                f"Marital: 0=Single, 1=Married, 2=Divorced, 3=Widowed. Prediction: 1=High Risk, 0=Low Risk. "
+                f"Join cust_personal_info to underbanked_prediction on cust_id."
+            ],
+        }], key=lambda x: x["id"]),
+        "example_question_sqls": [],
+        "sql_functions": sorted([
+            {"id": nid(), "identifier": f"{FULL_SCHEMA}.get_customer_details"},
+        ], key=lambda x: x["id"]),
+        "join_specs": [],
+        "sql_snippets": {"filters": [], "expressions": [], "measures": []},
+    },
+    "benchmarks": {"questions": []},
+}
+
+payload = {
+    "warehouse_id": WH_ID,
+    "title": "Credit Risk - FSI Credit Decisioning",
+    "description": "Explore credit risk data for Indian banking customers with financial profiles, transaction patterns, and risk predictions.",
+    "serialized_space": json.dumps(space, separators=(",", ":")),
+}
+
+cmd = ['databricks', 'api', 'post', '/api/2.0/genie/spaces',
+       '--json', json.dumps(payload), '--profile', PROFILE]
+r = subprocess.run(cmd, capture_output=True, text=True)
+if r.returncode == 0:
+    try:
+        out = json.loads(r.stdout)
+        space_id = out.get('space_id', '')
+        print(space_id)
+    except:
+        print('')
+else:
+    print('')
+    print(r.stderr[:300], file=sys.stderr)
+PYEOF
+)
+
+GENIE_ID=$(echo "$GENIE_RESULT" | head -1)
 
 if [ -n "$GENIE_ID" ] && [ "$GENIE_ID" != "" ]; then
     echo "  ✓ Genie space created: $GENIE_ID"
+    # Save for later use
+    echo "$GENIE_ID" > "$SCRIPT_DIR/genie_space_id.txt"
 else
     echo "  ⚠ Could not create Genie space automatically."
     echo "  Create manually: SQL Editor → + → Genie Space"
