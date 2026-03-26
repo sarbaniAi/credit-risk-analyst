@@ -151,26 +151,46 @@ Replace the agent in app code with your agent end point. ( Refer : deploy-templa
 ## Project Structure
 
 ```
-08-DB-Memory-App/
-├── agent_with_memory.py    # Credit Risk Agent with LangGraph & memory
-├── app.py                  # Flask backend with memory layer
-├── driver.py               # Agent driver for local testing
-├── deploy/                 # Production deployment files
-│   ├── app.py              # Production Flask app
-│   ├── app.yaml            # Databricks App config
-│   ├── requirements.txt    # Python dependencies
-│   └── dist/               # Built React frontend
-├── src/                    # React frontend source
-│   ├── App.jsx             # Main chat interface
-│   ├── components/
-│   │   ├── ChatMessage.jsx # Chat message component
-│   │   └── MemoryPanel.jsx # Memory viewer panel
-│   └── services/
-│       └── agentService.js # Agent API service
-├── index.html              # Frontend entry point
-├── package.json            # Node.js dependencies
-├── vite.config.js          # Vite build config
-└── VIDEO_SCRIPT.md         # Demo script
+credit-risk-analyst/
+├── setup/                                  # *** One-command data installation ***
+│   ├── 00_install.sh                       # Main installer — runs everything end-to-end
+│   ├── config.py                           # Central config (catalog, schema, table names, models)
+│   ├── 01_create_catalog.py                # Create Unity Catalog, schema, volume
+│   ├── 02_generate_data.py                 # Generate 1000 Indian banking synthetic records
+│   ├── 03_create_functions.py              # Create UC functions (get_customer_details, credit_report_generator)
+│   ├── 04_load_rag_chunks.py               # Load markdown knowledge docs into Delta table
+│   ├── 05_create_vector_search.py          # Create Vector Search endpoint + index
+│   ├── 06_create_lakebase.py               # Create Lakebase instance + memory tables
+│   └── knowledge_docs/                     # RAG knowledge base (markdown)
+│       ├── 01_credit_decision_logic_playbook.md
+│       ├── 02_product_routing_rules.md
+│       └── 03_rbi_compliance_checklist.md
+├── app.py                                  # Flask backend with memory layer
+├── app.yaml                                # Databricks App config
+├── requirements.txt                        # Python dependencies
+├── deploy/                                 # Production deployment files
+│   ├── app.py                              # Production Flask app
+│   ├── app.yaml                            # Databricks App config
+│   ├── requirements.txt                    # Python dependencies
+│   └── dist/                               # Built React frontend
+├── deploy-template/                        # Template for new deployments
+│   ├── app.py                              # Template app with agent endpoint placeholder
+│   ├── app.yaml                            # Template Databricks App config
+│   ├── SETUP_GUIDE.md                      # Step-by-step deployment guide
+│   └── src/                                # React source template
+├── src/                                    # React frontend source
+│   ├── App.jsx                             # Main chat interface
+│   ├── components/                         # UI components (ChatMessage, MemoryPanel)
+│   └── services/                           # Agent API service layer
+├── sample_data/                            # Generated sample data (after running installer)
+│   ├── underbanked_prediction.csv          # 1000 customer financial profiles
+│   └── cust_personal_info.csv              # 100 customer personal details
+├── dist/                                   # Built frontend assets
+├── images/                                 # Screenshots and diagrams
+├── index.html                              # Frontend entry point
+├── package.json                            # Node.js dependencies
+├── vite.config.js                          # Vite build config
+└── ENDPOINT_CONFIG.md                      # Agent endpoint configuration guide
 ```
 
 ## Technologies Used
@@ -186,33 +206,54 @@ Replace the agent in app code with your agent end point. ( Refer : deploy-templa
 
 ### Prerequisites
 
-- Databricks Workspace with Lakebase enabled
-- Model Serving endpoint with LLM access
-- Unity Catalog functions for credit risk tools
+- Databricks Workspace with a SQL warehouse
+- Databricks CLI installed and authenticated (`pip install databricks-cli`)
+- Python 3.8+ with `numpy`
 
-### Local Development
+### Step 1: Install All Databricks Assets (One Command)
 
-1. Install dependencies:
 ```bash
-npm install
-pip install -r requirements.txt
+# Using default config (catalog: fsi_credit_agent)
+./setup/00_install.sh <databricks-profile>
+
+# Or override catalog via env var (for workspaces where you can't create catalogs)
+UC_CATALOG="your_catalog" ./setup/00_install.sh <databricks-profile>
 ```
 
-2. Build the frontend:
+This creates: catalog, schema, volume, 2 tables (1000 + 100 rows), 2 UC functions, RAG chunks table, Vector Search endpoint + index, Genie space, and Lakebase instance.
+
+### Step 2: Build the Frontend
+
 ```bash
+npm install
 npm run build
 ```
 
-3. Run locally:
+### Step 3: Run Locally
+
 ```bash
+pip install -r requirements.txt
 python app.py
 ```
 
-### Deploy to Databricks
+### Step 4: Deploy to Databricks
 
 1. Copy `deploy/` folder to Databricks workspace
 2. Create a Databricks App pointing to `deploy/app.py`
 3. Configure the app with required permissions for Lakebase and Model Serving
+
+### Configuration
+
+Edit `setup/config.py` to customize:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `CATALOG` | `fsi_credit_agent` | Unity Catalog name |
+| `SCHEMA` | `agent_schema` | Schema name |
+| `AGENT_MODEL` | `databricks-gpt-oss-120b` | LLM for credit report generation |
+| `NUM_CUSTOMERS_FULL` | `1000` | Number of synthetic customer records |
+
+All settings can also be overridden via environment variables (`UC_CATALOG`, `UC_SCHEMA`, etc.).
 
 ## Usage Examples
 
