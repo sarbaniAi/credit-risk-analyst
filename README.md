@@ -1,259 +1,247 @@
-# Credit Risk Analyst Agent with Lakebase Memory
+# Credit Risk Analyst — Multi-Agent Demo on Databricks
 
-A Credit Risk Analyst AI Agent built with Databricks Agentbricks that features **persistent memory** powered by Databricks Lakebase. The agent remembers customer analyses, risk assessments, and conversation history across sessions.
+An end-to-end credit risk analysis solution using Databricks Agentbricks, Lakebase memory, and a React chat app. Built for Indian banking context with RBI/CIBIL compliance.
 
-This is extended version of Databricks Solution: https://www.databricks.com/resources/demos/tutorials/lakehouse-platform/lakehouse-credit-decisioning
-I have added this new module to implement agent memory with Lakebase.
+This is an extended version of the Databricks Solution: [Lakehouse Credit Decisioning](https://www.databricks.com/resources/demos/tutorials/lakehouse-platform/lakehouse-credit-decisioning)
 
----
-
-## Business Problem
-
-Financial institutions face critical challenges in credit risk assessment:
-
-| Challenge | Impact |
-|-----------|--------|
-| **Manual Analysis Bottleneck** | Credit analysts spend 60-70% of time gathering data from disparate systems |
-| **Inconsistent Risk Decisions** | Different analysts apply varying criteria, leading to compliance risks |
-| **No Institutional Memory** | Each analysis starts from scratch; past insights on customers are lost |
-| **Audit Trail Gaps** | Difficulty demonstrating regulatory compliance without complete conversation history |
-| **Slow Time-to-Decision** | Loan approvals delayed due to manual data aggregation |
-
-**This solution addresses these problems by:**
-- Automating data retrieval from multiple sources (credit bureaus, financial statements, transaction history)
-- Applying consistent risk scoring through AI-powered analysis
-- Maintaining persistent memory of all customer interactions and assessments
-- Providing complete audit trails for regulatory compliance (FCRA, ECOA, Basel III)
-- Reducing credit decision time from days to minutes
+![Architecture](images/credit-risk-agent-ui.png)
 
 ---
 
-## Why Databricks for Production-Grade AI Agents
-
-Databricks provides a unified platform to build, deploy, and scale enterprise AI agents:
-
-### 1. **Agentbricks Framework**
-- Build sophisticated multi-tool agents with Unity Catalog function integration
-- Native support for LangGraph conversation flows
-- Seamless integration with Databricks Model Serving
-
-### 2. **Lakebase (Managed PostgreSQL)**
-- Fully-managed database for persistent agent memory
-- No infrastructure management; automatic scaling and backups
-- SQL-compatible for easy querying and compliance reporting
-- Built-in authentication via Databricks service principals
-
-### 3. **Model Serving Endpoints**
-- Deploy agents as scalable REST APIs with one click
-- Built-in authentication and rate limiting
-- Auto-scaling based on demand; pay only for what you use
-- Supports Foundation Models (GPT-4, Claude, Llama) or custom fine-tuned models
-
-### 4. **Databricks Apps**
-- Deploy frontend applications within your Databricks workspace
-- Single Sign-On (SSO) with existing enterprise identity
-- No separate hosting infrastructure required
-- Secure access to data and models without credential management
-
-### 5. **Unity Catalog Integration**
-- Govern AI functions and tools centrally
-- Row-level security on customer data
-- Audit logging for all data access
-- Share tools across teams with fine-grained permissions
-
-### 6. **Enterprise Security & Compliance**
-- Data never leaves your cloud environment
-- SOC 2 Type II, HIPAA, FedRAMP certified
-- Complete lineage tracking for model decisions
-- Role-based access control (RBAC) at every layer
+## How It Works — 3 Steps
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    DATABRICKS AGENTIC ARCHITECTURE                       │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│   ┌──────────────┐    ┌──────────────┐    ┌──────────────────────────┐  │
-│   │ Databricks   │    │   Model      │    │    Unity Catalog         │  │
-│   │    Apps      │───▶│  Serving     │───▶│  (Functions & Data)      │  │
-│   │  (React UI)  │    │ (Agent API)  │    │                          │  │
-│   └──────────────┘    └──────────────┘    └──────────────────────────┘  │
-│          │                   │                        │                  │
-│          │                   ▼                        │                  │
-│          │         ┌──────────────────┐              │                  │
-│          │         │    Lakebase      │              │                  │
-│          └────────▶│ (Agent Memory)   │◀─────────────┘                  │
-│                    └──────────────────┘                                  │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────┐     ┌─────────────────────────┐     ┌──────────────────────┐
+│  Step 1: SETUP      │     │  Step 2: BUILD AGENT     │     │  Step 3: DEPLOY APP  │
+│                     │     │                          │     │                      │
+│  ./setup/00_install │────▶│  Agentbricks on platform │────▶│  Databricks App      │
+│                     │     │  (manual on UI)          │     │  (app/ folder)       │
+│  Creates:           │     │                          │     │                      │
+│  - Tables           │     │  Creates:                │     │  Provides:           │
+│  - UC Functions     │     │  - Supervisor Agent      │     │  - Chat UI           │
+│  - Vector Search    │     │  - Serving Endpoint      │     │  - Lakebase Memory   │
+│  - Genie Space      │     │                          │     │  - Audit Trail       │
+│  - Lakebase         │     │                          │     │                      │
+└─────────────────────┘     └─────────────────────────┘     └──────────────────────┘
 ```
 
 ---
 
-## Prerequisite: 
+## Step 1: Install Data Assets
 
-Build Databricks agent with  [Agentbricks Supervisor Agent](https://docs.databricks.com/aws/en/generative-ai/agent-bricks/)  or build a [custom agent](https://docs.databricks.com/aws/en/generative-ai/agent-framework/author-agent), get the Agent endpoint once it is ready. 
+One command provisions everything your agent needs.
 
-Replace the agent in app code with your agent end point. ( Refer : deploy-template )
+```bash
+# Clone the repo
+git clone https://github.com/sarbaniAi/credit-risk-analyst.git
+cd credit-risk-analyst
 
+# Run the installer (pass your Databricks CLI profile)
+./setup/00_install.sh <databricks-profile>
+
+# Or override catalog via env var
+UC_CATALOG="your_catalog" ./setup/00_install.sh <databricks-profile>
+```
+
+### What Gets Created
+
+| # | Asset | Description |
+|---|-------|-------------|
+| 1 | **Catalog & Schema** | Unity Catalog namespace for all assets |
+| 2 | **Volume** | `credit_docs` — stores CSVs and PDFs |
+| 3 | **Table** `underbanked_prediction` | 1000 Indian banking customers with financial profiles and risk predictions |
+| 4 | **Table** `cust_personal_info` | 100 customers with Indian names, emails, phone numbers |
+| 5 | **Table** `rag_chunks` | Credit policy, product routing, and RBI compliance knowledge base |
+| 6 | **UC Function** `get_customer_details` | TABLE function — lookup customer by ID |
+| 7 | **UC Function** `credit_report_generator` | SCALAR function — AI-generated credit risk report via `ai_query` |
+| 8 | **Vector Search Endpoint** | `credit-risk-vs-endpoint` — STANDARD, auto-provisioned |
+| 9 | **Vector Search Index** | `credit_policy_index` — Delta Sync with managed embeddings |
+| 10 | **Genie Space** | AI/BI Genie with both tables and sample questions |
+| 11 | **Lakebase** | `credit-risk-lakebase` — Postgres for conversation memory |
+
+### Configuration
+
+Edit `setup/config.py` or set environment variables:
+
+| Setting | Default | Env Var |
+|---------|---------|---------|
+| `CATALOG` | `fsi_credit_agent` | `UC_CATALOG` |
+| `SCHEMA` | `agent_schema` | `UC_SCHEMA` |
+| `AGENT_MODEL` | `databricks-gpt-oss-120b` | `AGENT_MODEL` |
+| `NUM_CUSTOMERS_FULL` | `1000` | `NUM_CUSTOMERS_FULL` |
+
+Environment variables override `config.py` values.
 
 ---
 
+## Step 2: Build the Agent (Agentbricks on Platform)
 
-## Features
+Use [Databricks Agentbricks](https://docs.databricks.com/aws/en/generative-ai/agent-bricks/) to create a **Supervisor Agent** that orchestrates the tools from Step 1.
 
-- **Persistent Long-Term Memory** - Stores customer insights, risk assessments, and emails across sessions using Lakebase (Databricks' managed PostgreSQL)
-- **Conversation History** - Full audit trail of all interactions for compliance
-- **Credit Risk Analysis** - Analyzes customer financial data and generates risk assessments
-- **Memory Recall** - Ask "What customers have I analyzed?" and the agent remembers
-- **Per-User Isolation** - Each user has their own memory space
-- **Deployed as Databricks App** - Runs within Databricks with built-in SSO
+### Agent Tools to Connect
 
-## Architecture
+| Tool | Source | Purpose |
+|------|--------|---------|
+| **Knowledge Assistant** | Vector Search index (`credit_policy_index`) | RAG — credit policy, product rules, RBI compliance |
+| **Customer Data (Genie)** | Genie Space | Natural language queries on customer tables |
+| **Credit Risk Profile** | UC Function `get_customer_details` | Structured customer lookup |
+| **Credit Report Generator** | UC Function `credit_report_generator` | AI-generated risk assessment |
 
+### Steps
+
+1. Go to your Databricks workspace
+2. Navigate to **Machine Learning → Agents → Create Agent**
+3. Select **Supervisor Agent** pattern
+4. Add the tools listed above
+5. Test in the playground
+6. **Deploy as a Serving Endpoint** — note the endpoint name for Step 3
+
+---
+
+## Step 3: Deploy the App
+
+The `app/` folder contains a Databricks App with a React chat UI and Lakebase-powered conversation memory.
+
+### Configure
+
+Update **3 values** in `app/app.yaml`:
+
+```yaml
+env:
+  - name: DATABRICKS_HOST
+    value: "https://your-workspace.cloud.databricks.com"   # ← Your workspace URL
+  - name: SERVING_ENDPOINT
+    value: "your-agent-endpoint"                            # ← From Step 2
+  - name: LAKEBASE_INSTANCE_NAME
+    value: "credit-risk-lakebase"                           # ← From Step 1
+
+resources:
+  serving_endpoints:
+    - name: your-agent-endpoint                             # ← Same as above
+      permission: CAN_QUERY
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Databricks App (React UI)                   │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Flask Backend (app.py)                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │   Memory    │  │   Memory    │  │      Agent Proxy        │  │
-│  │  Injection  │  │ Extraction  │  │  (Model Serving)        │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Databricks Lakebase                           │
-│  ┌───────────────────┐ ┌───────────────┐ ┌──────────────────┐   │
-│  │ app_conversation_ │ │ app_user_     │ │ app_conversation_│   │
-│  │     history       │ │   memories    │ │    summaries     │   │
-│  └───────────────────┘ └───────────────┘ └──────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+
+Update the endpoint in `app/src/services/agentService.js`:
+
+```javascript
+const AGENT_ENDPOINT = '/api/serving-endpoints/your-agent-endpoint/invocations';
 ```
 
-### Credit Risk Agent Chat Interface
+### Build & Deploy
 
-![Credit Risk Agent UI](images/credit-risk-agent-ui.png)
+```bash
+cd app
+npm install
+npm run build
+cd ..
 
-*The agent chat interface showing memory-enabled conversations with persistent context across sessions.*
+# Deploy to Databricks
+databricks apps deploy credit-risk-analyst --source-code-path app/ --profile <databricks-profile>
+```
 
-## Lakebase Memory Tables
+### App Features
+
+| Feature | How |
+|---------|-----|
+| **Chat UI** | React with streaming responses |
+| **Conversation Memory** | Lakebase — remembers past analyses across sessions |
+| **Memory Recall** | "What customers have I analyzed?" works across sessions |
+| **Audit Trail** | Full conversation history stored in `app_conversation_history` |
+| **Per-User Isolation** | Each user has their own memory space via SSO |
+
+### Lakebase Memory Tables
 
 | Table | Purpose |
 |-------|---------|
 | `app_conversation_history` | Full message history (thread_id, user_id, role, content) |
-| `app_user_memories` | Long-term memories (memory_type, memory_key, memory_value) |
+| `app_user_memories` | Long-term learned facts (customer IDs, risk levels, emails) |
 | `app_conversation_summaries` | Thread summaries with customer IDs discussed |
+
+These tables are created automatically by `setup/06_create_lakebase.py`. If Lakebase API is not available, the SQL is printed for manual execution.
+
+---
 
 ## Project Structure
 
 ```
 credit-risk-analyst/
-├── setup/                                  # *** One-command data installation ***
-│   ├── 00_install.sh                       # Main installer — runs everything end-to-end
-│   ├── config.py                           # Central config (catalog, schema, table names, models)
-│   ├── 01_create_catalog.py                # Create Unity Catalog, schema, volume
-│   ├── 02_generate_data.py                 # Generate 1000 Indian banking synthetic records
-│   ├── 03_create_functions.py              # Create UC functions (get_customer_details, credit_report_generator)
-│   ├── 04_load_rag_chunks.py               # Load markdown knowledge docs into Delta table
-│   ├── 05_create_vector_search.py          # Create Vector Search endpoint + index
-│   ├── 06_create_lakebase.py               # Create Lakebase instance + memory tables
-│   └── knowledge_docs/                     # RAG knowledge base (markdown)
+├── README.md
+├── setup/                                      # Step 1: Data Installation
+│   ├── 00_install.sh                           # One-command installer
+│   ├── config.py                               # Central config (catalog, schema, models)
+│   ├── 01_create_catalog.py                    # Create catalog, schema, volume
+│   ├── 02_generate_data.py                     # Generate 1000 Indian banking synthetic records
+│   ├── 03_create_functions.py                  # Create UC functions
+│   ├── 04_load_rag_chunks.py                   # Load markdown knowledge docs → Delta table
+│   ├── 05_create_vector_search.py              # Create Vector Search endpoint + index
+│   ├── 06_create_lakebase.py                   # Create Lakebase instance + memory tables
+│   └── knowledge_docs/                         # RAG knowledge base (markdown)
 │       ├── 01_credit_decision_logic_playbook.md
 │       ├── 02_product_routing_rules.md
 │       └── 03_rbi_compliance_checklist.md
-├── app.py                                  # Flask backend with memory layer
-├── app.yaml                                # Databricks App config
-├── requirements.txt                        # Python dependencies
-├── deploy/                                 # Production deployment files
-│   ├── app.py                              # Production Flask app
-│   ├── app.yaml                            # Databricks App config
-│   ├── requirements.txt                    # Python dependencies
-│   └── dist/                               # Built React frontend
-├── deploy-template/                        # Template for new deployments
-│   ├── app.py                              # Template app with agent endpoint placeholder
-│   ├── app.yaml                            # Template Databricks App config
-│   ├── SETUP_GUIDE.md                      # Step-by-step deployment guide
-│   └── src/                                # React source template
-├── src/                                    # React frontend source
-│   ├── App.jsx                             # Main chat interface
-│   ├── components/                         # UI components (ChatMessage, MemoryPanel)
-│   └── services/                           # Agent API service layer
-├── sample_data/                            # Generated sample data (after running installer)
-│   ├── underbanked_prediction.csv          # 1000 customer financial profiles
-│   └── cust_personal_info.csv              # 100 customer personal details
-├── dist/                                   # Built frontend assets
-├── images/                                 # Screenshots and diagrams
-├── index.html                              # Frontend entry point
-├── package.json                            # Node.js dependencies
-├── vite.config.js                          # Vite build config
-└── ENDPOINT_CONFIG.md                      # Agent endpoint configuration guide
+├── app/                                        # Step 3: Databricks App
+│   ├── app.py                                  # Flask backend with Lakebase memory
+│   ├── app.yaml                                # Databricks App config (update 3 values)
+│   ├── requirements.txt                        # Python dependencies
+│   ├── index.html                              # Frontend entry point
+│   ├── package.json                            # Node.js dependencies
+│   ├── vite.config.js                          # Vite build config
+│   └── src/                                    # React frontend source
+│       ├── App.jsx                             # Chat interface
+│       ├── components/
+│       │   ├── ChatMessage.jsx                 # Message display
+│       │   └── MemoryPanel.jsx                 # Memory viewer panel
+│       └── services/
+│           └── agentService.js                 # Agent API client (update endpoint)
+├── sample_data/                                # Generated after running setup
+│   ├── underbanked_prediction.csv
+│   └── cust_personal_info.csv
+└── images/                                     # Architecture diagrams
 ```
 
-## Technologies Used
+---
 
-- **Databricks Agentbricks** - AI agent framework
-- **Databricks Lakebase** - Managed PostgreSQL for memory storage
-- **Databricks Apps** - Deployment platform with SSO
-- **LangGraph** - Conversation state management
-- **React + Vite** - Frontend framework
-- **Flask** - Backend API server
+## Architecture
 
-## Getting Started
-
-### Prerequisites
-
-- Databricks Workspace with a SQL warehouse
-- Databricks CLI installed and authenticated (`pip install databricks-cli`)
-- Python 3.8+ with `numpy`
-
-### Step 1: Install All Databricks Assets (One Command)
-
-```bash
-# Using default config (catalog: fsi_credit_agent)
-./setup/00_install.sh <databricks-profile>
-
-# Or override catalog via env var (for workspaces where you can't create catalogs)
-UC_CATALOG="your_catalog" ./setup/00_install.sh <databricks-profile>
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Databricks App (React Chat UI)                │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Flask Backend (app.py)                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │   Memory    │  │   Memory    │  │      Agent Proxy        │ │
+│  │  Injection  │  │ Extraction  │  │  (Serving Endpoint)     │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+          │                                       │
+          ▼                                       ▼
+┌──────────────────────┐              ┌──────────────────────────┐
+│  Lakebase (Postgres) │              │  Agentbricks Supervisor  │
+│  - conversation_     │              │  ┌────────────────────┐  │
+│    history           │              │  │ Knowledge Assistant│  │
+│  - user_memories     │              │  │ (Vector Search)    │  │
+│  - conversation_     │              │  ├────────────────────┤  │
+│    summaries         │              │  │ Genie Agent        │  │
+│                      │              │  │ (Customer Data)    │  │
+└──────────────────────┘              │  ├────────────────────┤  │
+                                      │  │ UC Functions       │  │
+                                      │  │ (Risk Profile &    │  │
+                                      │  │  Credit Report)    │  │
+                                      │  └────────────────────┘  │
+                                      └──────────────────────────┘
+                                                  │
+                                                  ▼
+                                      ┌──────────────────────────┐
+                                      │  Unity Catalog           │
+                                      │  (Tables, Functions,     │
+                                      │   Models — all governed) │
+                                      └──────────────────────────┘
 ```
 
-This creates: catalog, schema, volume, 2 tables (1000 + 100 rows), 2 UC functions, RAG chunks table, Vector Search endpoint + index, Genie space, and Lakebase instance.
-
-### Step 2: Build the Frontend
-
-```bash
-npm install
-npm run build
-```
-
-### Step 3: Run Locally
-
-```bash
-pip install -r requirements.txt
-python app.py
-```
-
-### Step 4: Deploy to Databricks
-
-1. Copy `deploy/` folder to Databricks workspace
-2. Create a Databricks App pointing to `deploy/app.py`
-3. Configure the app with required permissions for Lakebase and Model Serving
-
-### Configuration
-
-Edit `setup/config.py` to customize:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `CATALOG` | `fsi_credit_agent` | Unity Catalog name |
-| `SCHEMA` | `agent_schema` | Schema name |
-| `AGENT_MODEL` | `databricks-gpt-oss-120b` | LLM for credit report generation |
-| `NUM_CUSTOMERS_FULL` | `1000` | Number of synthetic customer records |
-
-All settings can also be overridden via environment variables (`UC_CATALOG`, `UC_SCHEMA`, etc.).
+---
 
 ## Usage Examples
 
@@ -261,26 +249,43 @@ All settings can also be overridden via environment variables (`UC_CATALOG`, `UC
 # Analyze a customer
 "Analyze customer 34997"
 
-# Memory recall (in new conversation)
-"What customers have I analyzed?"
-"What's the email for my customer?"
+# Get credit report
+"Generate a credit risk report for customer 10042"
 
-# Get risk assessment
-"What risk factors contributed to this assessment?"
+# Query policy
+"What are the RBI guidelines for NPA classification?"
+
+# Memory recall (in a new session)
+"What customers have I analyzed?"
+"What was the risk level of my last customer?"
 ```
 
-## Memory Flow
+---
 
-1. **User sends message** → Stored in `app_conversation_history`
-2. **Memory injection** → Previous memories retrieved and injected as silent context
-3. **Agent responds** → Response analyzed for customer IDs, emails, risk levels
-4. **Memory extraction** → Key insights stored in `app_user_memories`
-5. **Next session** → Agent recalls all stored memories
+## Troubleshooting
 
-## License
+| Issue | Solution |
+|-------|----------|
+| Catalog creation fails | Installer shows available catalogs — use one via `UC_CATALOG` env var |
+| Tables show 0 rows | Cold warehouse — installer retries automatically (3 attempts) |
+| Vector Search endpoint not ONLINE | Wait 5-10 minutes, installer polls automatically |
+| Lakebase API not found | Create manually via SQL Editor → Lakebase |
+| `psycopg2` not found | Already in `app/requirements.txt` — redeploy the app |
+| 404 on serving endpoint | Verify endpoint name matches in `app.yaml` AND `agentService.js` |
 
-Internal use - Databricks
+---
+
+## Technologies
+
+- **Databricks Agentbricks** — Multi-agent supervisor pattern
+- **Databricks Lakebase** — Managed PostgreSQL for conversation memory
+- **Databricks Apps** — SSO-enabled app hosting
+- **Unity Catalog** — Governed functions, tables, and models
+- **Vector Search** — RAG with managed embeddings (`databricks-gte-large-en`)
+- **AI/BI Genie** — Natural language data exploration
+- **React + Vite** — Frontend chat UI
+- **Flask** — Backend API with memory layer
 
 ## Author
 
-Sarbani Maiti - Databricks
+Sarbani Maiti — Databricks

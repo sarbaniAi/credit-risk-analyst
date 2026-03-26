@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Build output
+app/dist/
+
 # Environment files
 .env
 .env.local
@@ -30,6 +33,8 @@ venv/
 # Databricks local config
 .databricks/
 
-# Agent files (not part of app deployment)
-agent_with_memory.py
-driver.py
+# Generated data (recreated by setup/00_install.sh)
+sample_data/
+
+# Setup artifacts
+setup/genie_space_id.txt
